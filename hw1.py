@@ -14,6 +14,8 @@ parser.add_argument('--num_state', type=int, default=2, help="#states for hmm")
 parser.add_argument('--num_symbol', type=int, default=4, help="#symbols for hmm")
 parser.add_argument('--num_init', type=int, default=2, help="#initializations for hmm")
 parser.add_argument('--num_iter', type=int, default=10, help="#iterations for hmm")
+parser.add_argument('--test', action="store_true", help="for testing")
+parser.add_argument('--test_target', type=str, default="NC_000007.14")
 
 if __name__=="__main__":
     args = parser.parse_args()
@@ -79,3 +81,15 @@ if __name__=="__main__":
         print(f"Optimized transition probabilities:\n{pd.DataFrame(optimized_hmm.transition_probs)}")
         print(f"Optimized emission probabilities:\n{pd.DataFrame(optimized_hmm.emission_probs)}")
         
+        # Apply optimized parameters to test sequence segment
+        if args.test:
+            print("\n Test section")
+            test_sequences = extract_and_process_sequence(args.file, 
+                                                          args.test_target, 
+                                                          args.start, 
+                                                          args.end)
+            test_S = test_sequences[0]
+
+            _, _, log2_prob_chromosome_7_segment = forward_algorithm_scaled(optimized_hmm, test_S)
+            print(f"Log2 probability of test sequence:{log2_prob_chromosome_7_segment}")
+
