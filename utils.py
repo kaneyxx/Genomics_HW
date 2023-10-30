@@ -36,7 +36,7 @@ def log2_prob_markov_chain(sequence, order, prob_0=None, prob_1=None, prob_2=Non
     
     # Compute log2 probability of order 2 Markov chain
     # Compute the probability of first 2 characters
-    log_prob_2 = math.log2(prob_1[sequence[0]][sequence[1]])
+    log_prob_2 = math.log2(prob_1[sequence[0]][sequence[1]]) + math.log2(prob_0[sequence[0]])
     # Then compute transition probability of second to third character
     for i in range(2, len(sequence)):
         log_prob_2 += math.log2(prob_2[sequence[i-2]+sequence[i-1]][sequence[i]])
