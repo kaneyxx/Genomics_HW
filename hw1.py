@@ -1,7 +1,7 @@
 import argparse
 import pandas as pd
 from models import order_0_mm, order_1_mm, order_2_mm, \
-    HMM, random_initialize_hmm, baum_welch_with_random_initializations, forward_algorithm_scaled
+    HMM, random_initialize_hmm, baum_welch_with_log_likelihood, forward_algorithm_scaled
 from utils import extract_and_process_sequence, log2_prob_markov_chain
 
 parser = argparse.ArgumentParser()
@@ -71,12 +71,11 @@ if __name__=="__main__":
         # Baum-Welch algorithm multiple times with random initializations to get the 
         # best HMM model for S.
         print("\nApplying Baum-Welch algorithm to extracted sequence")
-        optimized_hmm, optimized_log2_prob_S = baum_welch_with_random_initializations(S, 
-                                                                    num_states=args.num_state, 
-                                                                    num_symbols=args.num_symbol, 
-                                                                    num_initializations=args.num_init, 
-                                                                    num_iterations=args.num_iter)
+        optimized_hmm, optimized_log2_prob_S, iter_used = baum_welch_with_log_likelihood(initial_hmm,
+                                                            S,  
+                                                            max_iterations=args.num_iter)
         
+        print(f"Optimized {iter_used} iterations.")
         print(f"Optimized log2 probability:{optimized_log2_prob_S}")
         print(f"Optimized transition probabilities:\n{pd.DataFrame(optimized_hmm.transition_probs)}")
         print(f"Optimized emission probabilities:\n{pd.DataFrame(optimized_hmm.emission_probs)}")

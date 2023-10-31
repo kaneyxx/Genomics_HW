@@ -103,36 +103,40 @@ def random_initialize_hmm(num_states, num_symbols):
                transition_probs=transition_probs, emission_probs=emission_probs)
 
 
-# Baum-Welch with random initializations
-def baum_welch_with_random_initializations(sequence, num_states, num_symbols, num_initializations, num_iterations):
+# Baum-Welch algorithm
+def baum_welch_with_log_likelihood(hmm, sequence, max_iterations=100, convergence_threshold=1e-6):
     """
-    Run Baum-Welch algorithm with multiple random initializations.
-    """
-    best_hmm = None
-    best_log_prob = float('-inf')
+    Run the Baum-Welch algorithm with convergence based on the change in log likelihood.
     
-    for num_init in range(num_initializations):
-        print(f"run {num_init+1}")
-        # Randomly initialize the HMM
-        hmm = random_initialize_hmm(num_states, num_symbols)
+    :param hmm: Initial HMM model
+    :param sequence: Observed sequence
+    :param max_iterations: Maximum number of iterations
+    :param convergence_threshold: Threshold for log likelihood change to consider as convergence
+    :return: Trained HMM model, log probability of the sequence, number of iterations
+    """
+    prev_log_prob = None
+    
+    for num_iter in range(max_iterations):
+        # E-step: Using the user-provided forward algorithm and the modified backward algorithm
+        alpha, _, _ = forward_algorithm_scaled(hmm, sequence)
+        beta, _, _ = backward_algorithm_scaled(hmm, sequence)
+        xi, gamma = compute_xi_gamma(hmm, sequence, alpha, beta)
         
-        # Run Baum-Welch for a fixed number of iterations
-        for num_iter in range(num_iterations):
-            # E-step
-            alpha, scaling_factors, _ = forward_algorithm_scaled(hmm, sequence)
-            beta = backward_algorithm_scaled(hmm, sequence, scaling_factors)
-            xi, gamma = compute_xi_gamma(hmm, sequence, alpha, beta)
-            
-            # M-step
-            hmm = m_step(hmm, sequence, xi, gamma)
+        # M-step
+        hmm = m_step(hmm, sequence, xi, gamma)
         
-        # Compute log probability of the sequence for the final model
+        # Compute log probability of the sequence for the current model
         _, _, log_prob = forward_algorithm_scaled(hmm, sequence)
         
-        # Update the best model if current one is better
-        if log_prob > best_log_prob:
-            best_log_prob = log_prob
-            best_hmm = hmm
-            print("Improved!")
+        # Check for convergence if prev_log_prob is not None
+        if prev_log_prob is not None:
+            log_prob_change = abs(log_prob - prev_log_prob)
+            print(f"Iter {num_iter+1}:{log_prob_change}")
+            if log_prob_change < convergence_threshold:
+                break
+        
+        # Update previous log probability for the next iteration
+        prev_log_prob = log_prob
     
-    return best_hmm, best_log_prob
+    return hmm, log_prob, num_iter + 1
+

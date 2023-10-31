@@ -47,6 +47,43 @@ def log2_prob_markov_chain(sequence, order, prob_0=None, prob_1=None, prob_2=Non
     else:
         return log_prob_0, log_prob_1, log_prob_2
 
+
+def viterbi_algorithm_log(hmm, sequence):
+    num_states = len(hmm.states)
+    num_symbols = len(sequence)
+    
+    # Initialization
+    viterbi_log = np.full((num_states, num_symbols), -np.inf)
+    backpointer = np.zeros((num_states, num_symbols), dtype=int)
+    
+    # Convert sequence symbols to indices
+    sequence_idx = [hmm.symbols.index(symbol.upper()) for symbol in sequence]
+    
+    # Initialize first column of viterbi matrix
+    for state in range(num_states):
+        viterbi_log[state, 0] = np.log(hmm.initial_probs[state]) + np.log(hmm.emission_probs[state, sequence_idx[0]])
+    
+    # Forward pass
+    for t in range(1, num_symbols):
+        for state in range(num_states):
+            trans_log_probs = [viterbi_log[prev_state, t-1] + np.log(hmm.transition_probs[prev_state, state]) for prev_state in range(num_states)]
+            max_trans_log_prob = max(trans_log_probs)
+            backpointer[state, t] = np.argmax(trans_log_probs)
+            viterbi_log[state, t] = max_trans_log_prob + np.log(hmm.emission_probs[state, sequence_idx[t]])
+    
+    # Backtracking
+    best_path_pointer = np.argmax(viterbi_log[:, -1])
+    best_log_prob = np.max(viterbi_log[:, -1])
+    best_path = [best_path_pointer]
+    for t in range(num_symbols-1, 0, -1):
+        best_path_pointer = backpointer[best_path_pointer, t]
+        best_path.insert(0, best_path_pointer)
+    
+    best_path_states = [hmm.states[state] for state in best_path]
+    
+    return best_path_states, best_log_prob
+
+
 # Forward Algorithm with scaling
 def forward_algorithm_scaled(hmm, sequence):
     num_states = len(hmm.states)
@@ -86,29 +123,45 @@ def forward_algorithm_scaled(hmm, sequence):
 
 
 # Backward Algorithm with scaling
-def backward_algorithm_scaled(hmm, sequence, scaling_factors):
+def backward_algorithm_scaled(hmm, sequence):
     num_states = len(hmm.states)
     num_symbols = len(sequence)
     
-    # Create a matrix to store the backward probabilities
+    # Initialization
     beta = np.zeros((num_symbols, num_states))
+    scaling_factors = np.zeros(num_symbols)
     
-    # Initialization: scaled by the same factor as the last forward probabilities
-    beta[num_symbols - 1, :] = scaling_factors[num_symbols - 1]
+    # Set beta for time T to 1, scaled by a factor
+    beta[num_symbols-1, :] = 1
+    scaling_factor = 1 / np.sum(beta[num_symbols-1, :])
+    beta[num_symbols-1, :] *= scaling_factor
+    scaling_factors[num_symbols-1] = scaling_factor
     
-    # Recursion
-    for t in range(num_symbols - 2, -1, -1):
-        for i, state in enumerate(hmm.states):
-            symbol_idx = hmm.symbols.index(sequence[t+1].upper())
-            for j, next_state in enumerate(hmm.states):
+    # Backward steps
+    for t in range(num_symbols-2, -1, -1):
+        for i in range(num_states):
+            beta[t, i] = 0
+            for j in range(num_states):
+                symbol_idx = hmm.symbols.index(sequence[t+1].upper())
                 transition_prob = hmm.transition_probs[i, j]
                 emission_prob = hmm.emission_probs[j, symbol_idx]
                 beta[t, i] += beta[t+1, j] * transition_prob * emission_prob
         
-        # Scale beta values for time t using the same scaling factors as the forward algorithm
-        beta[t, :] *= scaling_factors[t]
+        # Scale beta values for time t
+        scaling_factor = 1 / np.sum(beta[t, :])
+        beta[t, :] *= scaling_factor
+        scaling_factors[t] = scaling_factor
     
-    return beta
+    # Calculate log probability
+    log_prob = 0
+    for i in range(num_states):
+        transition_probs = hmm.transition_probs[i]
+        emission_prob = hmm.emission_probs[i, hmm.symbols.index(sequence[0].upper())]
+        log_prob += beta[0, i] * transition_probs * emission_prob
+    
+    log_prob = np.log2(log_prob)
+    
+    return beta, scaling_factors, log_prob
 
 def compute_xi_gamma(hmm, sequence, alpha, beta):
     num_states = len(hmm.states)
