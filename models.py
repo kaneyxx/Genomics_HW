@@ -130,8 +130,9 @@ def baum_welch_with_log_likelihood(hmm, sequence, max_iterations=100, convergenc
         
         # Check for convergence if prev_log_prob is not None
         if prev_log_prob is not None:
+            print(f"Iter {num_iter+1}: Log-Prob.={log_prob}")
             log_prob_change = abs(log_prob - prev_log_prob)
-            print(f"Iter {num_iter+1}:{log_prob_change}")
+            print(f"Improved: {log_prob_change}")
             if log_prob_change < convergence_threshold:
                 break
         
