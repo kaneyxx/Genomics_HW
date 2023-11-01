@@ -46,7 +46,6 @@ if __name__=="__main__":
         print("Probabilities of order 2 Markov model:")
         print(pd.DataFrame(order_2_prob))
 
-
         log_prob_0, log_prob_1, log_prob_2 = log2_prob_markov_chain(S, 
                                                                     order=-1, 
                                                                     prob_0=order_0_prob,
